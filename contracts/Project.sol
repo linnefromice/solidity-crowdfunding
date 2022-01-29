@@ -72,7 +72,7 @@ contract Project is ERC721 {
   }
 
   // Contribute to this project.
-  function contribute() public payable activePj {
+  function contribute() external payable activePj {
     require(msg.value >= 0.01 ether, "Need over 0.01 ETH for contribution.");
 
     uint256 _value = msg.value;
@@ -100,7 +100,7 @@ contract Project is ERC721 {
   }
 
   // Close project.
-  function close() public payable onlyOwner activePj {
+  function close() external payable onlyOwner activePj {
     isClosed = true;
 
     uint _len = addressIndexes.length;
@@ -118,7 +118,7 @@ contract Project is ERC721 {
   }
 
   // Refund to msg.sender.
-  function refund() public payable closedPj failedPj {
+  function refund() external payable closedPj failedPj {
     uint256 _donation = donations[msg.sender];
     if (_donation != 0) {
       // refund
@@ -130,7 +130,7 @@ contract Project is ERC721 {
   }
 
   // Withdraw successed project donations.
-  function withdraw() public payable onlyOwner closedPj successedPj {
+  function withdraw() external payable onlyOwner closedPj successedPj {
     owner.transfer(currentTotalAmount);
     emit Withdrawed(owner, currentTotalAmount);
   }
