@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { BigNumber } from "ethers";
 
 const deployFactory = async () => {
@@ -188,14 +188,28 @@ describe("Project", () => {
   describe(".refund", () => {
     describe("success", () => {
       const _goalAmount = ethers.utils.parseEther("0.1")
-      it("emit Refunded event.", async () => {
-        const { contract, owner, addrs } = await deploy(BigNumber.from(_goalAmount));
-        const _contributor = addrs[0];
-        const _valueContributed = _goalAmount.div(BigNumber.from("10"));
-        await contract.connect(_contributor).contribute({ value: _valueContributed });
-        await contract.connect(owner).close();
-        await expect(contract.connect(_contributor).refund())
-          .to.emit(contract, "Refunded").withArgs(_contributor.address, 0); // close() で既に refund されているため
+      describe("In case of project closed by owner", () => {
+        it("emit Refunded event.", async () => {
+          const { contract, owner, addrs } = await deploy(BigNumber.from(_goalAmount));
+          const _contributor = addrs[0];
+          const _valueContributed = _goalAmount.div(BigNumber.from("10"));
+          await contract.connect(_contributor).contribute({ value: _valueContributed });
+          await contract.connect(owner).close();
+          await expect(contract.connect(_contributor).refund())
+            .to.emit(contract, "Refunded").withArgs(_contributor.address, 0); // close() で既に refund されているため
+        });
+      });
+      describe("In case of project closed by timeup", () => {
+        it("emit Refunded event.", async () => {
+          const { contract, addrs } = await deploy(BigNumber.from(_goalAmount));
+          const _contributor = addrs[0];
+          const _valueContributed = _goalAmount.div(BigNumber.from("10"));
+          await contract.connect(_contributor).contribute({ value: _valueContributed });
+          // await network.provider.send('evm_setNextBlockTimestamp', [currentDate + 2592000001]) // + (30day + 1ms)
+          await network.provider.send('evm_increaseTime', [2592000001]) // + (30day + 1ms)
+          await expect(contract.connect(_contributor).refund())
+            .to.emit(contract, "Refunded").withArgs(_contributor.address, _valueContributed); // close() で既に refund されているため
+        });
       });
     });
     describe("failure", () => {
@@ -206,7 +220,6 @@ describe("Project", () => {
           contract.connect(owner).refund()
         ).to.be.revertedWith("This project is active.")
       })
-      it.skip("Should fail when active project (reason is time)", () => {})
       it("Should fail when success project", async () => {
         const { contract, owner } = await deploy(BigNumber.from(_goalAmount));
         await contract.connect(owner).contribute({ value: _goalAmount })
@@ -245,7 +258,13 @@ describe("Project", () => {
           contract.connect(owner).withdraw()
         ).to.be.revertedWith("This project is active.")
       })
-      it.skip("Should fail when active project (reason is time)", () => {})
+      it("Should fail when active project (reason is time)", async () => {
+        const { contract, owner } = await deploy(BigNumber.from(_goalAmount));
+        await network.provider.send('evm_increaseTime', [2592000001]) // + (30day + 1ms)
+        await expect(
+          contract.connect(owner).withdraw()
+        ).to.be.revertedWith("This project failed.")
+      })
     });
   });
 })
