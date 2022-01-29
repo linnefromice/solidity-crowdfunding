@@ -109,7 +109,8 @@ contract Project is ERC721 {
       if (_addr != address(0)) {
         uint256 _donation = donations[_addr];
         if (_donation != 0) {
-          payable(_addr).transfer(_donation);
+          (bool sent, ) = payable(_addr).call{value: _donation}("");
+          require(sent, "Failed to send Ether");
           donations[_addr] = 0;
         }
       }
@@ -122,7 +123,8 @@ contract Project is ERC721 {
     uint256 _donation = donations[msg.sender];
     if (_donation != 0) {
       // refund
-      payable(msg.sender).transfer(_donation);
+      (bool sent, ) = payable(msg.sender).call{value: _donation}("");
+      require(sent, "Failed to send Ether");
       donations[msg.sender] = 0;
     }
 
@@ -131,7 +133,8 @@ contract Project is ERC721 {
 
   // Withdraw successed project donations.
   function withdraw() external payable onlyOwner closedPj successedPj {
-    owner.transfer(currentTotalAmount);
+    (bool sent, ) = owner.call{value: currentTotalAmount}("");
+    require(sent, "Failed to send Ether");
     emit Withdrawed(owner, currentTotalAmount);
   }
 
